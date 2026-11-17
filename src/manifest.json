@@ -1,0 +1,43 @@
+{
+  "manifest_version": 2,
+  "name": "Feedback for LLM Pro",
+  "version": "1.0.0",
+  "description": "🐞 Create an issue, record the steps that led to the problem, write what you expected vs what you saw, and export a paste-ready report — with element-level remarks carrying CSS selectors and React component names.",
+  "permissions": [
+    "storage",
+    "clipboardWrite",
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": [
+      "background.js"
+    ],
+    "persistent": false
+  },
+  "browser_action": {
+    "default_title": "🐞 Feedback for LLM Pro — click to open the drawer",
+    "default_icon": {
+      "48": "icons/icon-48.png",
+      "96": "icons/icon-96.png"
+    }
+  },
+  "icons": {
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "feedback.css"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ]
+}

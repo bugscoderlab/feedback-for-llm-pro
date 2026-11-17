@@ -1,0 +1,668 @@
+/* Feedback for LLM Pro — content script styles (ported from prototype.html).
+ * Everything is ffab-prefixed to avoid collisions with the host page.
+ */
+
+#ffab-highlight {
+  position: fixed;
+  pointer-events: none;
+  border: 2px solid #4f46e5;
+  border-radius: 4px;
+  background: rgba(79, 70, 229, 0.08);
+  z-index: 2147483646;
+  display: block;
+}
+#ffab-highlight.ffab-hidden { display: none; }
+
+body.ffab-annotating,
+body.ffab-annotating * {
+  cursor: crosshair !important;
+}
+
+/* Remove mode: the same crosshair, but the highlight reads red so you always
+   know a click baskets the element instead of opening the remark popover. */
+body.ffab-removing #ffab-highlight {
+  border-color: #c02b2b;
+  background: rgba(192, 43, 43, 0.1);
+}
+
+/* Step mode: the same crosshair again, teal, so a click appends a step to the
+   walkthrough rather than opening the popover or basketing the element. */
+body.ffab-stepping #ffab-highlight {
+  border-color: #0f766e;
+  background: rgba(15, 118, 110, 0.1);
+}
+
+/* A step landed. The highlight is already sitting on the hovered element, so
+   without this the pick that registers is indistinguishable from the ones that
+   haven't happened yet. */
+#ffab-highlight.ffab-flash {
+  animation: ffab-flash 0.4s ease-out;
+}
+@keyframes ffab-flash {
+  from { box-shadow: 0 0 0 6px rgba(15, 118, 110, 0.35); }
+  to { box-shadow: 0 0 0 0 rgba(15, 118, 110, 0); }
+}
+
+/* ---------- popover ---------- */
+
+#ffab-pop {
+  position: fixed;
+  width: 340px;
+  background: #ffffff;
+  border: 1px solid #e3e6ec;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(20, 24, 45, 0.22);
+  z-index: 2147483647;
+  padding: 14px;
+  display: block;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #1a2233;
+  font-size: 14px;
+}
+#ffab-pop.ffab-hidden { display: none; }
+#ffab-pop .ffab-ctx {
+  font-size: 11px;
+  color: #98a1b3;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+#ffab-pop .ffab-ctx b { color: #1a2233; }
+#ffab-pop .ffab-sel {
+  font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  background: #f3f4f8;
+  border-radius: 6px;
+  padding: 4px 7px;
+  margin-bottom: 8px;
+  word-break: break-all;
+  color: #5a6478;
+}
+#ffab-pop textarea {
+  width: 100%;
+  min-height: 74px;
+  font: inherit;
+  font-size: 13px;
+  padding: 8px;
+  border: 1px solid #e3e6ec;
+  border-radius: 8px;
+  resize: vertical;
+  box-sizing: border-box;
+  color: #1a2233;
+}
+#ffab-pop textarea:focus {
+  outline: 2px solid #eef0fe;
+  border-color: #4f46e5;
+}
+#ffab-pop .ffab-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  justify-content: flex-end;
+}
+
+/* ---------- buttons ---------- */
+
+.ffab-btn {
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 14px;
+}
+.ffab-btn.ffab-primary { background: #4f46e5; color: #ffffff; }
+.ffab-btn.ffab-primary:hover { background: #4338ca; }
+.ffab-btn.ffab-ghost {
+  background: transparent;
+  border: 1px solid #e3e6ec;
+  color: #5a6478;
+}
+.ffab-btn.ffab-ghost:hover { border-color: #c6ccd8; color: #1a2233; }
+.ffab-btn.ffab-pick { background: #eef0fe; color: #4f46e5; }
+.ffab-btn.ffab-pick.ffab-on { background: #4f46e5; color: #ffffff; }
+.ffab-btn.ffab-del { background: #fdecec; color: #c02b2b; }
+.ffab-btn.ffab-del.ffab-on { background: #c02b2b; color: #ffffff; }
+.ffab-btn.ffab-step { background: #e6f6f4; color: #0f766e; }
+.ffab-btn.ffab-step.ffab-on { background: #0f766e; color: #ffffff; }
+/* Stands in for a confirm() dialog on Clear all — see the handler. */
+.ffab-btn.ffab-arm { background: #c02b2b; border-color: #c02b2b; color: #ffffff; }
+/* An action's own report on the button that caused it — Copy says "✓ Copied"
+   here instead of putting a modal in front of the page. */
+.ffab-btn.ffab-flash-ok {
+  background: #e8f5ec;
+  border-color: #bfe3c9;
+  color: #15803d;
+}
+.ffab-btn.ffab-flash-bad {
+  background: #fdecec;
+  border-color: #f2cccc;
+  color: #c02b2b;
+}
+
+/* ---------- markers ---------- */
+
+#ffab-markers {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2147483645;
+}
+.ffab-marker {
+  position: fixed;
+  pointer-events: auto;
+  z-index: 2147483645;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #4f46e5;
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(20, 24, 45, 0.3);
+  transform: translate(50%, -50%);
+  box-sizing: border-box;
+}
+.ffab-marker.ffab-resolved { background: #9aa3b5; }
+.ffab-marker.ffab-marker-del {
+  background: #c02b2b;
+  min-width: 20px;
+  font-size: 12px;
+}
+.ffab-marker.ffab-marker-pop {
+  animation: ffab-marker-pop 0.4s ease-out;
+}
+@keyframes ffab-marker-pop {
+  from { transform: translate(50%, -50%) scale(1.9); }
+  to { transform: translate(50%, -50%) scale(1); }
+}
+
+/* ---------- fab ---------- */
+
+/* Sits at the very end of the rule set on purpose: every other element has an
+   ID-qualified hide rule (#ffab-highlight/.ffab-hidden, etc). Without this one,
+   adding the ffab-hidden class to the FAB is a no-op and the button stays on
+   screen permanently. */
+#ffab-fab.ffab-hidden { display: none; }
+
+#ffab-fab {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 2147483647;
+  background: #1a2233;
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  padding: 11px 18px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13.5px;
+  font-weight: 650;
+  box-shadow: 0 6px 20px rgba(20, 24, 45, 0.3);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+}
+#ffab-fab:hover { background: #000000; }
+#ffab-fab .ffab-cnt {
+  background: #4f46e5;
+  border-radius: 999px;
+  min-width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+}
+#ffab-fab.ffab-picking {
+  background: #4f46e5;
+  animation: ffab-pulse 1.4s infinite;
+}
+@keyframes ffab-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.5); }
+  50% { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); }
+}
+
+/* ---------- drawer ---------- */
+
+#ffab-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 380px;
+  background: #ffffff;
+  border-left: 1px solid #e3e6ec;
+  z-index: 2147483647;
+  /* Separates the docked panel from the page; a floating all-around shadow
+     would read as a card, this reads as an edge. */
+  box-shadow: -10px 0 30px rgba(20, 24, 45, 0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #1a2233;
+  font-size: 14px;
+  box-sizing: border-box;
+  transform: translateX(0);
+  transition: transform 0.28s ease;
+}
+/* Slides in from the right edge instead of popping: hidden means translated
+   fully off-screen (visibility follows the transform so the panel is gone
+   only after the slide finishes). check-hidden.mjs treats visibility:hidden
+   as a hide rule, and no JS changes are needed — show/hide only toggle the
+   ffab-hidden class. pointer-events guards the invisible off-screen phase. */
+#ffab-drawer.ffab-hidden {
+  visibility: hidden;
+  transform: translateX(100%);
+  transition: transform 0.28s ease, visibility 0s linear 0.28s;
+  pointer-events: none;
+}
+#ffab-drawer .ffab-dr-head {
+  padding: 13px 16px;
+  border-bottom: 1px solid #e3e6ec;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#ffab-drawer .ffab-dr-head h3 {
+  font-size: 13.5px;
+  margin: 0;
+  flex: 1;
+}
+/* The build version, from the manifest — a reviewer reporting a bug can read
+   which release they saw the bug in straight off the panel. */
+#ffab-drawer .ffab-ver {
+  font-size: 10px;
+  font-weight: 600;
+  color: #98a1b3;
+  background: #f0f1f5;
+  border-radius: 999px;
+  padding: 2px 7px;
+  margin-left: 6px;
+  vertical-align: 2px;
+  letter-spacing: 0.02em;
+}
+#ffab-drawer .ffab-x {
+  cursor: pointer;
+  color: #98a1b3;
+  font-size: 16px;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+#ffab-drawer .ffab-x:hover { background: #f0f1f5; color: #1a2233; }
+#ffab-drawer .ffab-dr-pickers {
+  padding: 10px 16px 0;
+  display: flex;
+  gap: 8px;
+}
+#ffab-drawer .ffab-dr-pickers .ffab-btn {
+  flex: 1;
+  white-space: nowrap;
+}
+/* The walkthrough gets a row of its own: three nowrap buttons on one 380px row
+   would squeeze the two existing pickers into unreadable stubs. */
+#ffab-drawer .ffab-dr-walk {
+  padding: 8px 16px 0;
+}
+#ffab-drawer .ffab-dr-walk .ffab-btn {
+  width: 100%;
+}
+#ffab-drawer .ffab-dr-actions {
+  padding: 9px 16px 10px;
+  border-bottom: 1px solid #e3e6ec;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+#ffab-dr-clear.ffab-hidden { display: none; }
+/* The format chooser Save swaps in for: markdown brief or the loadable JSON
+   record. Two mini buttons, the same slot as Save, so the row never moves. */
+#ffab-dr-fmt { display: inline-flex; gap: 4px; padding: 7px 0; white-space: nowrap; }
+#ffab-dr-fmt.ffab-hidden { display: none; }
+#ffab-dr-fmt .ffab-fmt { padding: 3px 8px; font-size: 11.5px; line-height: 1; background: #eef0fe; color: #4f46e5; border: 1px solid #dfe3fb; }
+#ffab-dr-fmt .ffab-fmt:hover { background: #e0e4fa; }
+/* The paste box Load opens: a reviewer can send the JSON through chat or
+   email, and loading it needs no file picker — just Ctrl-V. */
+#ffab-dr-loadbox { padding: 8px 16px 10px; border-bottom: 1px solid #e3e6ec; }
+#ffab-dr-loadbox.ffab-hidden { display: none; }
+#ffab-dr-loadbox .ffab-lb-note { font-size: 11px; color: #b45309; background: #fdf3e3; border-radius: 6px; padding: 4px 8px; margin-bottom: 6px; }
+#ffab-dr-loadbox .ffab-lb-note:empty { display: none; }
+#ffab-dr-loadbox textarea {
+  width: 100%;
+  min-height: 64px;
+  font: inherit;
+  font-size: 11px;
+  font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  padding: 8px;
+  border: 1px solid #e3e6ec;
+  border-radius: 8px;
+  resize: vertical;
+  box-sizing: border-box;
+  color: #1a2233;
+}
+#ffab-dr-loadbox .ffab-row { display: flex; gap: 8px; margin-top: 8px; justify-content: flex-end; }
+/* The in-place confirm shared by destructive actions (Clear all, Load over
+   existing feedback): an explicit ✓/✕ choice instead of a dialog or a
+   re-click arm. Sized to a button's own slot so the swap never re-wraps the
+   row. */
+#ffab-dr-ask {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #5a6478;
+  white-space: nowrap;
+  padding: 7px 4px;
+}
+#ffab-dr-ask.ffab-hidden { display: none; }
+#ffab-dr-ask .ffab-btn { padding: 3px 9px; font-size: 11.5px; line-height: 1; }
+#ffab-dr-clear-yes { background: #e8f5ec; color: #15803d; border: 1px solid #bfe3c9; }
+#ffab-dr-clear-yes:hover { background: #d3eddb; }
+#ffab-dr-clear-no { background: #fdecec; color: #c02b2b; border: 1px solid #f2cccc; }
+#ffab-dr-clear-no:hover { background: #fbdcdc; }
+#ffab-drawer .ffab-dr-list {
+  overflow: auto;
+  padding: 10px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+/* The drawer is a fixed-height flex column, so once steps + review + basket +
+   remarks are all present there is more content than room. Everyone shrinking
+   equally slices the middle blocks into slivers — freeze the chrome and the box
+   that is being typed into, and let the lists share what is left, each keeping a
+   couple of rows and scrolling internally. */
+#ffab-drawer .ffab-dr-head,
+#ffab-drawer .ffab-dr-pickers,
+#ffab-drawer .ffab-dr-walk,
+#ffab-drawer .ffab-dr-actions,
+#ffab-drawer .ffab-dr-review,
+#ffab-drawer .ffab-dr-manual {
+  flex: none;
+}
+#ffab-drawer .ffab-dr-steps,
+#ffab-drawer .ffab-dr-basket {
+  flex: 0 1 auto;
+  min-height: 58px;
+}
+#ffab-drawer .ffab-dr-steps {
+  min-height: 88px; /* head + two steps — the rest scrolls */
+}
+#ffab-drawer .ffab-dr-list {
+  flex: 1 1 auto;
+  min-height: 64px;
+}
+#ffab-drawer .ffab-dr-empty {
+  color: #98a1b3;
+  font-size: 12.5px;
+  text-align: center;
+  padding: 26px 10px;
+  line-height: 1.6;
+}
+
+/* ---------- removal basket ---------- */
+
+#ffab-drawer .ffab-dr-basket {
+  border-bottom: 1px solid #e3e6ec;
+  background: #fdf7f7;
+  padding: 9px 16px 11px;
+  max-height: 200px;
+  overflow: auto;
+}
+#ffab-dr-basket.ffab-hidden { display: none; }
+#ffab-drawer .ffab-bk-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+#ffab-drawer .ffab-bk-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #c02b2b;
+  flex: 1;
+}
+#ffab-drawer .ffab-bk-clear {
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  background: transparent;
+  color: #c02b2b;
+  border: 1px solid #f2cccc;
+  border-radius: 6px;
+  cursor: pointer;
+}
+#ffab-drawer .ffab-bk-clear:hover { background: #fdecec; }
+#ffab-drawer .ffab-bk-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 0;
+}
+#ffab-drawer .ffab-bk-row + .ffab-bk-row { border-top: 1px solid #f3e2e2; }
+#ffab-drawer .ffab-bk-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+#ffab-drawer .ffab-bk-label {
+  font-size: 11.5px;
+  font-weight: 650;
+  color: #1a2233;
+}
+#ffab-drawer .ffab-bk-sel {
+  font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  color: #98a1b3;
+  word-break: break-all;
+}
+#ffab-drawer .ffab-bk-x {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 4px 7px;
+  background: #ffffff;
+  color: #c02b2b;
+  border: 1px solid #f2cccc;
+  border-radius: 6px;
+  cursor: pointer;
+  flex: none;
+}
+#ffab-drawer .ffab-bk-x:hover { background: #fdecec; }
+
+/* ---------- walkthrough (steps + review) ---------- */
+
+/* The ordered run of picks. Structurally the same list as the removal basket
+   above — same row classes — so it only re-tints what the basket already
+   styles, teal where the basket is red. */
+#ffab-drawer .ffab-dr-steps {
+  border-bottom: 1px solid #e3e6ec;
+  background: #f5fbfa;
+  padding: 9px 16px 11px;
+  max-height: 200px;
+  overflow: auto;
+}
+#ffab-dr-steps.ffab-hidden { display: none; }
+#ffab-drawer .ffab-st-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+#ffab-drawer .ffab-st-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #0f766e;
+  flex: 1;
+}
+#ffab-drawer .ffab-st-clear {
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  background: transparent;
+  color: #0f766e;
+  border: 1px solid #cfe9e5;
+  border-radius: 6px;
+  cursor: pointer;
+}
+#ffab-drawer .ffab-st-clear:hover { background: #e6f6f4; }
+#ffab-drawer .ffab-st-n {
+  background: #0f766e;
+  color: #ffffff;
+  border-radius: 999px;
+  min-width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  flex: none;
+  margin-top: 1px;
+}
+#ffab-drawer .ffab-dr-steps .ffab-bk-row + .ffab-bk-row { border-top-color: #dcefec; }
+/* …including the row buttons, which the basket styles red. */
+#ffab-drawer .ffab-dr-steps .ffab-bk-x {
+  background: #ffffff;
+  color: #0f766e;
+  border-color: #cfe9e5;
+}
+#ffab-drawer .ffab-dr-steps .ffab-bk-x:hover { background: #e6f6f4; }
+
+/* The words on the walkthrough, right under the steps they describe. */
+#ffab-drawer .ffab-dr-review {
+  border-bottom: 1px solid #e3e6ec;
+  padding: 9px 16px 11px;
+}
+#ffab-dr-review.ffab-hidden { display: none; }
+#ffab-drawer .ffab-dr-review .ffab-rv-head {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #0f766e;
+  margin-bottom: 6px;
+}
+#ffab-drawer .ffab-dr-review textarea {
+  width: 100%;
+  min-height: 64px;
+  font: inherit;
+  font-size: 12.5px;
+  padding: 8px;
+  border: 1px solid #e3e6ec;
+  border-radius: 8px;
+  resize: vertical;
+  box-sizing: border-box;
+  color: #1a2233;
+}
+#ffab-drawer .ffab-dr-review textarea:focus {
+  outline: 2px solid #eef0fe;
+  border-color: #0f766e;
+}
+#ffab-drawer .ffab-dr-manual {
+  padding: 10px 16px;
+  border-top: 1px solid #e3e6ec;
+  display: flex;
+  gap: 6px;
+}
+#ffab-drawer .ffab-dr-manual input {
+  flex: 1;
+  font: inherit;
+  font-size: 12px;
+  font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  padding: 7px 9px;
+  border: 1px solid #e3e6ec;
+  border-radius: 8px;
+  color: #1a2233;
+  box-sizing: border-box;
+}
+
+/* ---------- annotation card ---------- */
+
+.ffab-ann {
+  border: 1px solid #e3e6ec;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.ffab-ann.ffab-resolved { opacity: 0.55; }
+.ffab-ann .ffab-ann-top {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.ffab-ann .ffab-n {
+  background: #4f46e5;
+  color: #ffffff;
+  border-radius: 999px;
+  min-width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  flex: none;
+}
+.ffab-ann.ffab-resolved .ffab-n { background: #9aa3b5; }
+.ffab-ann .ffab-ann-label {
+  font-size: 11.5px;
+  font-weight: 650;
+  flex: 1;
+}
+.ffab-ann .ffab-ann-sel {
+  font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  color: #98a1b3;
+  word-break: break-all;
+  margin-bottom: 5px;
+}
+.ffab-ann .ffab-ann-quote {
+  font-size: 11px;
+  color: #5a6478;
+  background: #f6f7fa;
+  border-radius: 6px;
+  padding: 4px 8px;
+  margin-bottom: 6px;
+}
+.ffab-ann .ffab-ann-note {
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.ffab-ann .ffab-ann-tools {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.ffab-ann .ffab-ann-tools button {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 9px;
+  background: #f0f1f5;
+  color: #5a6478;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.ffab-ann .ffab-ann-tools button:hover { background: #e6e8ef; color: #1a2233; }
+
+.ffab-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.ffab-badge.ffab-b-ok { background: #e8f5ec; color: #15803d; }
+.ffab-badge.ffab-b-review { background: #fdf3e3; color: #b45309; }
