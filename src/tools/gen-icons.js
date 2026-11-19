@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /* Generates the extension icons (PNG, no dependencies — hand-rolled encoder).
  *
- * Glyph: white rounded "note" (speech rectangle with two text lines and a
- * pencil dot) on an indigo rounded square, matching the prototype accent.
+ * Glyph: white ladybug (Pro's 🐞 identity — head, wing case with centre split
+ * and spots) on a warm red rounded square, so the Pro add-on is visually
+ * distinct from feedback-for-llm's indigo note-card icon.
  *
  * Usage: node tools/gen-icons.js
  */
@@ -10,7 +11,7 @@ const { deflateSync } = require("node:zlib");
 const { writeFileSync, mkdirSync } = require("node:fs");
 const { join } = require("node:path");
 
-const ACCENT = [79, 70, 229]; // #4f46e5
+const ACCENT = [220, 38, 38]; // #dc2626
 const INK = [255, 255, 255];
 
 function crc32(buf) {
@@ -70,23 +71,31 @@ function roundedRect(x, y, x0, y0, x1, y1, r) {
   return (x - cx) ** 2 + (y - cy) ** 2 <= r * r || (x >= x0 + r && x < x1 - r) || (y >= y0 + r && y < y1 - r);
 }
 
+/* Filled ellipse test — the ladybug's head and wing case. */
+function ellipse(x, y, cx, cy, rx, ry) {
+  return ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1;
+}
+
 function makeIcon(size) {
   const s = size / 96; // scale from the 96px design
   const rr = (v) => Math.round(v * s);
   return encodePNG(size, (x, y) => {
-    // indigo rounded-square background
+    // warm red rounded-square background
     if (!roundedRect(x, y, 0, 0, size - 1, size - 1, rr(20))) return [0, 0, 0, 0];
     let color = [...ACCENT, 1];
-    // white note body (speech-card)
-    if (roundedRect(x, y, rr(22), rr(20), rr(74), rr(62), rr(9))) color = [...INK, 1];
-    // speech tail
-    if (roundedRect(x, y, rr(30), rr(58), rr(44), rr(72), rr(5)) && x < rr(38) + (y - rr(58))) color = [...INK, 1];
-    // two text lines (indigo)
-    if (roundedRect(x, y, rr(30), rr(32), rr(64), rr(37), rr(2))) color = [...ACCENT, 1];
-    if (roundedRect(x, y, rr(30), rr(44), rr(56), rr(49), rr(2))) color = [...ACCENT, 1];
-    // pencil dot bottom-right accent
-    if (roundedRect(x, y, rr(60), rr(60), rr(80), rr(80), rr(10))) color = [...INK, 1];
-    if (roundedRect(x, y, rr(66), rr(68), rr(76), rr(72), rr(2))) color = [...ACCENT, 1];
+    // head
+    if (ellipse(x, y, rr(48), rr(27), rr(9), rr(9))) color = [...INK, 1];
+    // wing case (body)
+    if (ellipse(x, y, rr(48), rr(57), rr(24), rr(20))) color = [...INK, 1];
+    // centre split between the wings
+    if (roundedRect(x, y, rr(45), rr(41), rr(51), rr(75), rr(2))) color = [...ACCENT, 1];
+    // head-body join notch, so the head reads as separate
+    if (roundedRect(x, y, rr(38), rr(35), rr(58), rr(38), rr(2))) color = [...ACCENT, 1];
+    // spots on the wings
+    if (ellipse(x, y, rr(37), rr(52), rr(5), rr(5))) color = [...ACCENT, 1];
+    if (ellipse(x, y, rr(59), rr(52), rr(5), rr(5))) color = [...ACCENT, 1];
+    if (ellipse(x, y, rr(43), rr(66), rr(4), rr(4))) color = [...ACCENT, 1];
+    if (ellipse(x, y, rr(53), rr(66), rr(4), rr(4))) color = [...ACCENT, 1];
     return color;
   });
 }
