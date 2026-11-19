@@ -141,6 +141,130 @@ body.ffab-stepping #ffab-highlight {
   color: #c02b2b;
 }
 
+/* ---------- picked-so-far list (multi run) ---------- */
+
+/* Collapsed, this is a small dark chip the size of the pill — a full list
+   pinned top-right would sit on top of page content (the right-hand columns
+   of a report table, say) and swallow picks aimed at what it covers. Click
+   the chip for the full list; click its header to fold it back. */
+#ffab-run {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 2147483646;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+#ffab-run.ffab-hidden { display: none; }
+#ffab-run .ffab-run-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: none;
+  background: #1a2233;
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 9px 15px;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(20, 24, 45, 0.3);
+}
+#ffab-run .ffab-run-chip:hover { background: #000000; }
+#ffab-run .ffab-run-chip b { color: #a5b4fc; }
+#ffab-run .ffab-run-chip .ffab-run-hint { color: #9aa3b5; font-weight: 500; font-size: 11.5px; }
+#ffab-run .ffab-run-chip .ffab-run-caret { color: #9aa3b5; font-size: 11px; }
+#ffab-run .ffab-run-chip.ffab-run-pop { animation: ffab-run-pop 0.3s ease-out; }
+@keyframes ffab-run-pop {
+  from { transform: scale(1.12); }
+  to { transform: scale(1); }
+}
+
+/* Expanded: the full picked-so-far card. */
+#ffab-run .ffab-run-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #e3e6ec;
+  border-radius: 12px 12px 0 0;
+  border-bottom: 1px solid #eef0f4;
+  box-shadow: 0 12px 40px rgba(20, 24, 45, 0.22);
+  padding: 10px 12px 8px;
+}
+#ffab-run .ffab-run-collapse {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: #1a2233;
+  cursor: pointer;
+}
+#ffab-run .ffab-run-collapse:hover { color: #4f46e5; }
+#ffab-run .ffab-run-head .ffab-run-hint { font-weight: 500; color: #9aa3b5; font-size: 11.5px; }
+#ffab-run .ffab-run-empty {
+  font-size: 12px;
+  color: #9aa3b5;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid #e3e6ec;
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 12px 40px rgba(20, 24, 45, 0.22);
+}
+#ffab-run .ffab-run-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  background: #ffffff;
+  border-left: 1px solid #e3e6ec;
+  border-right: 1px solid #e3e6ec;
+  border-bottom: 1px solid #f2f3f7;
+}
+#ffab-run .ffab-run-row:last-of-type { border-radius: 0 0 12px 12px; box-shadow: 0 12px 40px rgba(20, 24, 45, 0.22); }
+#ffab-run .ffab-run-n {
+  flex: none;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #4f46e5;
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+#ffab-run .ffab-run-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+#ffab-run .ffab-run-label {
+  font-size: 12px;
+  color: #1a2233;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#ffab-run .ffab-run-sel {
+  font-size: 10.5px;
+  color: #9aa3b5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#ffab-run .ffab-run-x {
+  flex: none;
+  border: none;
+  background: none;
+  color: #9aa3b5;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: 6px;
+  line-height: 1;
+}
+#ffab-run .ffab-run-x:hover { background: #f0f1f5; color: #c02b2b; }
+
 /* ---------- markers ---------- */
 
 #ffab-markers {
@@ -306,12 +430,15 @@ body.ffab-stepping #ffab-highlight {
   flex: 1;
   white-space: nowrap;
 }
-/* The walkthrough gets a row of its own: three nowrap buttons on one 380px row
-   would squeeze the two existing pickers into unreadable stubs. */
-#ffab-drawer .ffab-dr-walk {
+/* The walkthrough and the shared-note picker get a row of their own: three
+   nowrap buttons on one 380px row would squeeze the two existing pickers into
+   unreadable stubs. */
+#ffab-drawer .ffab-dr-walk,
+#ffab-drawer .ffab-dr-multi {
   padding: 8px 16px 0;
 }
-#ffab-drawer .ffab-dr-walk .ffab-btn {
+#ffab-drawer .ffab-dr-walk .ffab-btn,
+#ffab-drawer .ffab-dr-multi .ffab-btn {
   width: 100%;
 }
 #ffab-drawer .ffab-dr-actions {
@@ -383,6 +510,7 @@ body.ffab-stepping #ffab-highlight {
 #ffab-drawer .ffab-dr-head,
 #ffab-drawer .ffab-dr-pickers,
 #ffab-drawer .ffab-dr-walk,
+#ffab-drawer .ffab-dr-multi,
 #ffab-drawer .ffab-dr-actions,
 #ffab-drawer .ffab-dr-review,
 #ffab-drawer .ffab-dr-manual {

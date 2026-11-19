@@ -6,7 +6,8 @@ LLM"), evolved into a **structured issue reporter**: create an issue, record
 the steps that led to the problem, write what you expected versus what you
 observed, and export a paste-ready report — with element-level remarks carrying
 CSS selectors and React component names. Forked from
-[`feedback-for-llm`](https://github.com/bugscoderlab/feedback-for-llm) v1.8.2.
+[`feedback-for-llm`](https://github.com/bugscoderlab/feedback-for-llm) v1.8.2
+(engine at v1.9.2 after the multi-pick port).
 
 ## What it does
 

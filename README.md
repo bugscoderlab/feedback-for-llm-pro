@@ -23,6 +23,15 @@ from this repo's GitHub Releases.
   node, the same internals React DevTools uses. Production builds minify
   names away; apps that opt in with a `data-component` /
   `data-inspector-*` Babel plugin are read too.
+- **🎯 Pick several** — one remark that applies to a whole group: the same
+  picker, but each click collects the element (duplicates skipped, the run
+  counted on the pill) and the picker stays armed. A **picked-so-far chip**
+  (top right) keeps the live count — click it to see the full list of labels
+  and selectors and ✕ a mispick out, click its header to fold it back; kept
+  collapsed by default so it never covers page content you may still want to
+  pick. **Esc** opens the remark popover once, and the single note lands on
+  every picked element as its own numbered remark — so each still gets its
+  own marker, edit, and export entry.
 - **🚫 Remove element** — the same picker aimed at deletion: picks skip the popover
   and drop straight into a removal basket (red ✕ markers), one after another, until
   you press Esc.
