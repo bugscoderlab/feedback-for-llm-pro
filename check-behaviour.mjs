@@ -154,25 +154,26 @@ const HARNESS_JS = `
     check("Esc leaves step mode", !document.body.classList.contains("ffab-stepping"));
     check("Esc opens the drawer", !$("ffab-drawer").classList.contains("ffab-hidden"));
     check("steps section is visible", !$("ffab-dr-steps").classList.contains("ffab-hidden"));
-    check("review box is visible", !$("ffab-dr-review").classList.contains("ffab-hidden"));
+    check("issue fields are visible", !!$("ffab-dr-issue-fields"));
     check("steps are listed in order",
       [].map.call($("ffab-dr-steps").querySelectorAll(".ffab-bk-label"), (n) => n.textContent).join(" | ") ===
         "button \\u201cAdd user\\u201d | input \\u201cEmail\\u201d | button \\u201cSave\\u201d",
       [].map.call($("ffab-dr-steps").querySelectorAll(".ffab-bk-label"), (n) => n.textContent).join(" | "));
 
     // 6. write it down, then resume the run — the words must not be lost
-    const ta = $("ffab-dr-review-note");
+    const ta = $("ffab-issue-observation");
     ta.value = REVIEW;
     ta.dispatchEvent(new Event("input", { bubbles: true }));
     await sleep(400);
-    check("review is persisted as it is typed", rec().review === REVIEW);
+    check("observation is persisted as it is typed", rec().issues[0].observation === REVIEW,
+      JSON.stringify(rec().issues));
     click($("ffab-dr-step"));
     click($("add-user"));
     await sleep(30);
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     await sleep(30);
     check("run resumes to a fourth step", rec().steps.length === 4);
-    check("review survives the resume", $("ffab-dr-review-note").value === REVIEW);
+    check("observation survives the resume", $("ffab-issue-observation").value === REVIEW);
 
     // 7. a remark on top, so the brief carries both halves
     click($("ffab-dr-pick"));
@@ -182,7 +183,7 @@ const HARNESS_JS = `
     click($("ffab-ap-save"));
     await sleep(30);
     check("remark is saved", rec().annotations.length === 1);
-    check("review box is untouched by a remark", $("ffab-dr-review-note").value === REVIEW);
+    check("observation is untouched by a remark", $("ffab-issue-observation").value === REVIEW);
 
     // 7b. a dropdown: the press is swallowed so the menu cannot open, and the
     // pick still lands in the remark popover
@@ -410,8 +411,8 @@ const HARNESS_JS = `
     check("steps are numbered in order",
       where.every((p, i) => p !== -1 && (i === 0 || p > where[i - 1])),
       WANT_STEPS.filter((l, i) => where[i] === -1).join(" / ") || "in order");
-    check("steps come before the review", md.indexOf("## Steps to reproduce") < md.indexOf("Review:"));
-    check("review follows the steps", md.indexOf("Review:") < md.indexOf(REVIEW) && md.indexOf(REVIEW) !== -1);
+    check("steps come before the observation", md.indexOf("## Steps to reproduce") < md.indexOf("Observation:"));
+    check("observation follows the steps", md.indexOf("Observation:") < md.indexOf(REVIEW) && md.indexOf(REVIEW) !== -1);
     check("remarks still follow the review", md.indexOf(REVIEW) < md.indexOf("## 1. [OPEN] button"));
     check("the brief names the component and source file",
       md.indexOf("Component: \\\`PricingCard\\\`") !== -1 &&
@@ -428,7 +429,7 @@ const HARNESS_JS = `
     await sleep(60);
     check("re-inject restores the steps",
       !!$("ffab-dr-steps") && $("ffab-dr-steps").textContent.indexOf("Steps to reproduce (4)") !== -1);
-    check("re-inject restores the review", $("ffab-dr-review-note").value === REVIEW);
+    check("re-inject restores the observation", $("ffab-issue-observation").value === REVIEW);
     check("re-inject leaves one drawer", document.querySelectorAll("#ffab-drawer").length === 1);
     // The re-armed instance answers the toolbar toggle — this is the
     // "clicked after an update, nothing happened" regression: before the
@@ -463,13 +464,19 @@ const HARNESS_JS = `
     await sleep(50);
     check("tick clears", rec().steps.length === 0);
     check("clear all empties the stored steps", rec().steps.length === 0, JSON.stringify(rec().steps));
-    check("clear all empties the stored review", rec().review === "", JSON.stringify(rec().review));
+    check("clear all resets to one empty issue",
+      rec().issues.length === 1 && rec().issues[0].title === "" && rec().issues[0].expected === ""
+        && rec().issues[0].observation === "",
+      JSON.stringify(rec().issues));
     check("clear all empties remarks and basket",
       rec().annotations.length === 0 && rec().basket.length === 0);
     check("clear all hides the steps section", $("ffab-dr-steps").classList.contains("ffab-hidden"));
     check("clear all empties the steps list", $("ffab-dr-steps").innerHTML === "");
-    check("clear all empties the review box", $("ffab-dr-review-note").value === "");
-    check("clear all hides the review box", $("ffab-dr-review").classList.contains("ffab-hidden"));
+    check("clear all empties the issue fields",
+      $("ffab-issue-title").value === "" && $("ffab-issue-expected").value === ""
+        && $("ffab-issue-observation").value === "");
+    check("clear all keeps the issue fields visible",
+      !$("ffab-dr-issue-fields").classList.contains("ffab-hidden"));
     check("clear all hides itself", $("ffab-dr-clear").classList.contains("ffab-hidden"));
 
     // 11. the steps section's own clear drops the steps and nothing else
@@ -551,7 +558,7 @@ const HARNESS_JS = `
       rec().annotations.length === 1 && rec().annotations[0].note === "loaded from paste");
     check("load restores steps, review, and seq",
       rec().steps.length === 1 && rec().review === "loaded review" && rec().seq === 2);
-    check("the review box shows the loaded review", $("ffab-dr-review-note").value === "loaded review");
+    check("the loaded review lands in observation", $("ffab-issue-observation").value === "loaded review");
     check("load closes the box and reports on its own button",
       $("ffab-dr-loadbox").classList.contains("ffab-hidden")
         && $("ffab-dr-load").textContent.indexOf("Loaded") !== -1,
@@ -568,6 +575,22 @@ const HARNESS_JS = `
     click($("ffab-dr-load-cancel"));
     await sleep(30);
     check("cancel closes the paste box", $("ffab-dr-loadbox").classList.contains("ffab-hidden"));
+
+    // 15. the issue model: title, expected, observation persist on the active issue
+    $("ffab-issue-title").value = "Save stays disabled";
+    $("ffab-issue-title").dispatchEvent(new Event("input", { bubbles: true }));
+    $("ffab-issue-expected").value = "Save becomes clickable once Email is filled";
+    $("ffab-issue-expected").dispatchEvent(new Event("input", { bubbles: true }));
+    $("ffab-issue-observation").value = "Save stayed greyed out";
+    $("ffab-issue-observation").dispatchEvent(new Event("input", { bubbles: true }));
+    await sleep(400);
+    check("the active issue persists title, expected, observation",
+      rec().issues.length === 1
+        && rec().issues[0].title === "Save stays disabled"
+        && rec().issues[0].expected === "Save becomes clickable once Email is filled"
+        && rec().issues[0].observation === "Save stayed greyed out",
+      JSON.stringify(rec().issues));
+    check("the stored record carries no legacy review key", !("review" in rec()));
 
     const out = document.createElement("pre");
     out.id = "result";

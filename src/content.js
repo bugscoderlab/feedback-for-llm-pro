@@ -177,7 +177,12 @@
   // reach the problem, plus the prose that explains it. Positional rather than
   // numbered — step 2 is the second pick, so deleting one renumbers the rest.
   let steps = [];
-  let review = "";
+  // The page's structured reports: one issue is active at a time, and remarks
+  // and steps are stamped with its id. The removal basket stays page-global —
+  // deleting an element is page feedback, not part of one issue's story.
+  let issues = []; // {id, title, expected, observation, createdAt}
+  let issueSeq = 1;
+  let activeIssueId = null;
   // Set as soon as the reviewer changes anything. A storage read that resolves
   // after that must not lay the old record back on top of their change — which is
   // how "cleared" steps come back when an extension update re-injects this script
@@ -186,6 +191,61 @@
   // …and the mirror of it: until the stored record has actually been read, the
   // arrays in hand are empty, so writing them would wipe the reviewer's record.
   let loaded = false;
+
+  /** The issue commands land on — never null once ensureIssue() has run. */
+  function activeIssue() {
+    return issues.find((i) => i.id === activeIssueId) ?? issues[0] ?? null;
+  }
+
+  /** A fresh page (or a wiped one) starts with one empty default issue. */
+  function ensureIssue() {
+    if (!issues.length) {
+      issues.push({ id: issueSeq++, title: "", expected: "", observation: "", createdAt: new Date().toISOString() });
+    }
+    if (!activeIssue()) activeIssueId = issues[0].id;
+    return activeIssue();
+  }
+
+  /* Adopt a raw record (from storage or a pasted JSON) into the live state.
+     Handles both shapes: records written since the issues feature (issues
+     array present) and legacy ones (pre-feature storage or a format 1 export,
+     where the freeform review becomes the default issue's Observation).
+     Picks with a missing or dangling issueId are stamped onto the active
+     issue — migrated, never dropped. */
+  function adoptState(rec) {
+    annotations = Array.isArray(rec?.annotations) ? rec.annotations : [];
+    basket = Array.isArray(rec?.basket) ? rec.basket : [];
+    steps = Array.isArray(rec?.steps) ? rec.steps : [];
+    seq =
+      typeof rec?.seq === "number"
+        ? rec.seq
+        : annotations.reduce((m, a) => Math.max(m, a.num || 0), 0) + 1;
+    const legacyReview = typeof rec?.review === "string" ? rec.review : "";
+    if (Array.isArray(rec?.issues) && rec.issues.length) {
+      issues = rec.issues.map((i) => ({
+        id: typeof i.id === "number" ? i.id : issueSeq++,
+        title: typeof i.title === "string" ? i.title : "",
+        expected: typeof i.expected === "string" ? i.expected : "",
+        observation: typeof i.observation === "string" ? i.observation : "",
+        createdAt: typeof i.createdAt === "string" ? i.createdAt : new Date().toISOString(),
+      }));
+      const maxId = issues.reduce((m, i) => Math.max(m, i.id), 0);
+      issueSeq = typeof rec.issueSeq === "number" && rec.issueSeq > maxId ? rec.issueSeq : maxId + 1;
+      activeIssueId = issues.some((i) => i.id === rec.activeIssueId) ? rec.activeIssueId : issues[0].id;
+    } else {
+      issues = [
+        { id: 1, title: "", expected: "", observation: legacyReview, createdAt: new Date().toISOString() },
+      ];
+      issueSeq = 2;
+      activeIssueId = 1;
+    }
+    annotations.forEach((a) => {
+      if (!issues.some((i) => i.id === a.issueId)) a.issueId = activeIssueId;
+    });
+    steps.forEach((s) => {
+      if (!issues.some((i) => i.id === s.issueId)) s.issueId = activeIssueId;
+    });
+  }
 
   async function load() {
     let rec = null;
@@ -197,11 +257,7 @@
     }
     loaded = true;
     if (dirty) return; // the reviewer got there first — their state wins
-    annotations = rec?.annotations ?? [];
-    basket = rec?.basket ?? [];
-    steps = rec?.steps ?? [];
-    review = rec?.review ?? "";
-    seq = rec?.seq ?? annotations.reduce((m, a) => Math.max(m, a.num || 0), 0) + 1;
+    adoptState(rec);
     render();
   }
 
@@ -210,7 +266,7 @@
     if (!loaded) return; // never write a record we have not read yet
     try {
       await browser.storage.local.set({
-        [storageKey]: { annotations, seq, basket, steps, review },
+        [storageKey]: { annotations, seq, basket, steps, issues, issueSeq, activeIssueId },
       });
     } catch {
       // storage full or unavailable — remarks still live for this session
@@ -228,7 +284,6 @@
     "ffab-run",
     "ffab-marker",
     "ffab-dr-steps",
-    "ffab-dr-review",
   ];
 
   // Adopt a clean slate before injecting, covering whatever the teardown above
@@ -259,6 +314,18 @@
       <div class="ffab-dr-head">
         <h3>🐞 Feedback for LLM Pro <small class="ffab-ver" id="ffab-version"></small></h3>
         <span class="ffab-x" id="ffab-dr-close">✕</span>
+      </div>
+      <div class="ffab-dr-issuebar">
+        <button class="ffab-btn ffab-ghost" id="ffab-issue-switch" title="Switch the active issue">🐞 <span id="ffab-issue-cur">Issue 1</span> ▾</button>
+        <button class="ffab-btn ffab-ghost" id="ffab-issue-new" title="Start a new issue on this page">＋ New</button>
+      </div>
+      <div class="ffab-dr-issues ffab-hidden" id="ffab-issue-menu"></div>
+      <div class="ffab-dr-issue-fields" id="ffab-dr-issue-fields">
+        <input id="ffab-issue-title" placeholder="Issue title — what’s wrong, in one line">
+        <div class="ffab-rv-head">Expected</div>
+        <textarea id="ffab-issue-expected" placeholder="What you expected to happen…"></textarea>
+        <div class="ffab-rv-head">Observation</div>
+        <textarea id="ffab-issue-observation" placeholder="What you observed instead — the agent reads this above your remarks."></textarea>
       </div>
       <div class="ffab-dr-pickers">
         <button class="ffab-btn ffab-pick" id="ffab-dr-pick">🎯 Pick element</button>
@@ -293,10 +360,6 @@
         </div>
       </div>
       <div class="ffab-dr-steps ffab-hidden" id="ffab-dr-steps"></div>
-      <div class="ffab-dr-review ffab-hidden" id="ffab-dr-review">
-        <div class="ffab-rv-head">Review</div>
-        <textarea id="ffab-dr-review-note" placeholder="What you were doing, what you expected, what happened — the agent reads this above your remarks."></textarea>
-      </div>
       <div class="ffab-dr-basket ffab-hidden" id="ffab-dr-basket"></div>
       <div class="ffab-dr-list" id="ffab-dr-list"></div>
       <div class="ffab-dr-manual">
@@ -970,9 +1033,19 @@
 
   /* ---------------- drawer ---------------- */
 
+  /** True when anything on the page would be lost to Clear all. */
+  function hasAnyContent() {
+    return !!(
+      annotations.length ||
+      basket.length ||
+      steps.length ||
+      issues.some((i) => i.title.trim() || i.expected.trim() || i.observation.trim())
+    );
+  }
+
   /** Clear all is offered only when there is something to clear. */
   function syncClearAll() {
-    const any = !!(annotations.length || basket.length || steps.length || review.trim());
+    const any = hasAnyContent();
     if (!any) closeAsk(); // a hidden button must not come back with its ask open
     $("ffab-dr-clear").classList.toggle("ffab-hidden", !any);
   }
@@ -1078,25 +1151,41 @@
     renderSteps();
     renderBasket();
     renderRun();
+    renderIssueBar();
 
     renderMarkers();
   }
 
+  /* The issue bar: the switcher names the active issue (its ordinal + title),
+     and the three fields below it edit that issue. Field values sync on every
+     render, but never while the reviewer is typing in them. The menu itself
+     renders in the switcher task. */
+  function syncField(id, value) {
+    const el = $(id);
+    if (document.activeElement !== el && el.value !== value) el.value = value;
+  }
+
+  function renderIssueBar() {
+    ensureIssue();
+    const issue = activeIssue();
+    const n = issues.indexOf(issue) + 1;
+    const t = issue.title.trim();
+    $("ffab-issue-cur").textContent =
+      `Issue ${n}` + (t ? ` — ${t.length > 28 ? t.slice(0, 28) + "…" : t}` : "");
+    syncField("ffab-issue-title", issue.title);
+    syncField("ffab-issue-expected", issue.expected);
+    syncField("ffab-issue-observation", issue.observation);
+  }
+
   /**
-   * The walkthrough: the ordered run of picks, with the review box that explains
-   * it right underneath. Rows reuse the basket's row classes — the two lists are
-   * structurally the same thing, one red and one teal.
+   * The walkthrough: the ordered run of picks, with the issue fields that
+   * explain it right underneath. Rows reuse the basket's row classes — the
+   * two lists are structurally the same thing, one red and one teal.
    */
   function renderSteps() {
     const box = $("ffab-dr-steps");
     const has = !!steps.length;
     box.classList.toggle("ffab-hidden", !has);
-    // The review box is static markup, so typing in it survives a re-render —
-    // never overwrite it while the reviewer is in it. It stays visible when steps
-    // were cleared but words are still there, so nothing can be lost out of sight.
-    $("ffab-dr-review").classList.toggle("ffab-hidden", !has && !review.trim());
-    const ta = $("ffab-dr-review-note");
-    if (document.activeElement !== ta && ta.value !== review) ta.value = review;
 
     if (!has) {
       box.innerHTML = "";
@@ -1203,20 +1292,25 @@
   $("ffab-dr-step").addEventListener("click", () =>
     pickMode === "step" ? stopPicking() : startPicking("step")
   );
-  // The review is typed straight into the static box: the words live in `review`
-  // as they are typed (so Copy/export is never stale), and persistence is
-  // debounced so a sentence is not one storage write per keystroke.
-  let reviewSaveTimer = null;
-  $("ffab-dr-review-note").addEventListener("input", (e) => {
-    review = e.target.value;
-    syncClearAll();
-    clearTimeout(reviewSaveTimer);
-    reviewSaveTimer = setTimeout(save, 300);
-  });
-  $("ffab-dr-review-note").addEventListener("blur", () => {
-    clearTimeout(reviewSaveTimer);
-    save();
-  });
+  // The issue fields are typed straight into the static block: the words live
+  // on the active issue as they are typed (so Copy/export is never stale), and
+  // persistence is debounced so a sentence is not one storage write per keystroke.
+  let issueSaveTimer = null;
+  function bindIssueField(id, key) {
+    $(id).addEventListener("input", (e) => {
+      ensureIssue()[key] = e.target.value;
+      syncClearAll();
+      clearTimeout(issueSaveTimer);
+      issueSaveTimer = setTimeout(save, 300);
+    });
+    $(id).addEventListener("blur", () => {
+      clearTimeout(issueSaveTimer);
+      save();
+    });
+  }
+  bindIssueField("ffab-issue-title", "title");
+  bindIssueField("ffab-issue-expected", "expected");
+  bindIssueField("ffab-issue-observation", "observation");
   $("ffab-dr-sel-add").addEventListener("click", () => {
     const sel = $("ffab-dr-sel-input").value.trim();
     if (!sel) return;
@@ -1308,7 +1402,8 @@
       steps.forEach((s, i) =>
         L.push(`${i + 1}. ${s.label} — \`${s.selector}\`${s.component ? ` — ⚛ \`${s.component}\`${s.source ? ` (${s.source})` : ""}` : ""}`));
       L.push("");
-      if (review.trim()) L.push("Review:", review.trim(), "");
+      const obs = activeIssue()?.observation?.trim();
+      if (obs) L.push("Observation:", obs, "");
     }
     if (!annotations.length) L.push("(no remarks)");
     annotations.forEach((a) => {
@@ -1411,16 +1506,20 @@
     annotations = [];
     basket = [];
     steps = [];
-    review = "";
     seq = 1;
-    $("ffab-dr-review-note").value = "";
+    issues = [];
+    issueSeq = 1;
+    activeIssueId = null;
+    ensureIssue();
+    $("ffab-issue-title").value = "";
+    $("ffab-issue-expected").value = "";
+    $("ffab-issue-observation").value = "";
     await save();
     render();
   }
 
   $("ffab-dr-clear").addEventListener("click", () => {
-    const empty = !annotations.length && !basket.length && !steps.length && !review.trim();
-    if (empty) return;
+    if (!hasAnyContent()) return;
     askConfirm("ffab-dr-clear", clearEverything);
   });
 
@@ -1477,7 +1576,7 @@
     if (!open) return closeLoadBox();
     closeAsk();
     box.classList.remove("ffab-hidden");
-    const empty = !annotations.length && !basket.length && !steps.length && !review.trim();
+    const empty = !hasAnyContent();
     $("ffab-dr-loadnote").textContent = empty
       ? "Paste the feedback JSON below."
       : "Loading replaces the current feedback on this page.";
@@ -1506,17 +1605,9 @@
   // this, and so save() actually writes.
   async function applyLoadedRecord(rec) {
     if (!rec || !Array.isArray(rec.annotations)) throw new Error("not a feedback record");
-    annotations = rec.annotations;
-    basket = Array.isArray(rec.basket) ? rec.basket : [];
-    steps = Array.isArray(rec.steps) ? rec.steps : [];
-    review = typeof rec.review === "string" ? rec.review : "";
-    seq =
-      typeof rec.seq === "number"
-        ? rec.seq
-        : annotations.reduce((m, a) => Math.max(m, a.num || 0), 0) + 1;
+    adoptState(rec);
     dirty = true; // the async load() must not lay storage back over this
     loaded = true;
-    $("ffab-dr-review-note").value = review;
     await save();
     render();
   }

@@ -421,6 +421,51 @@ body.ffab-stepping #ffab-highlight {
   border-radius: 6px;
 }
 #ffab-drawer .ffab-x:hover { background: #f0f1f5; color: #1a2233; }
+/* The issue bar: switcher names the active issue, ＋ New starts the next one. */
+#ffab-drawer .ffab-dr-issuebar {
+  padding: 8px 16px 0;
+  display: flex;
+  gap: 8px;
+}
+#ffab-drawer .ffab-dr-issuebar .ffab-btn { white-space: nowrap; }
+#ffab-drawer #ffab-issue-switch { flex: 1; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+#ffab-drawer .ffab-dr-issues {
+  margin: 6px 16px 0;
+  border: 1px solid #e3e6ec;
+  border-radius: 8px;
+  max-height: 160px;
+  overflow: auto;
+}
+#ffab-issue-menu.ffab-hidden { display: none; }
+#ffab-drawer .ffab-dr-issues .ffab-issue-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  font: inherit;
+  font-size: 12px;
+  padding: 7px 10px;
+  background: #ffffff;
+  border: none;
+  border-bottom: 1px solid #eef0f4;
+  cursor: pointer;
+  text-align: left;
+  color: #1a2233;
+}
+#ffab-drawer .ffab-dr-issues .ffab-issue-row:last-child { border-bottom: none; }
+#ffab-drawer .ffab-dr-issues .ffab-issue-row:hover { background: #f6f7fb; }
+#ffab-drawer .ffab-dr-issues .ffab-issue-row.ffab-on { background: #eef0fe; font-weight: 600; }
+#ffab-drawer .ffab-dr-issues .ffab-issue-row .ffab-issue-n {
+  color: #4f46e5;
+  font-weight: 700;
+  flex: none;
+}
+#ffab-drawer .ffab-dr-issues .ffab-issue-row .ffab-issue-t {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 #ffab-drawer .ffab-dr-pickers {
   padding: 10px 16px 0;
   display: flex;
@@ -669,21 +714,36 @@ body.ffab-stepping #ffab-highlight {
 }
 #ffab-drawer .ffab-dr-steps .ffab-bk-x:hover { background: #e6f6f4; }
 
-/* The words on the walkthrough, right under the steps they describe. */
-#ffab-drawer .ffab-dr-review {
+/* The issue under the walkthrough: title, Expected, Observation. */
+#ffab-drawer .ffab-dr-issue-fields {
   border-bottom: 1px solid #e3e6ec;
   padding: 9px 16px 11px;
 }
-#ffab-dr-review.ffab-hidden { display: none; }
-#ffab-drawer .ffab-dr-review .ffab-rv-head {
+#ffab-drawer .ffab-dr-issue-fields .ffab-rv-head {
   font-size: 11.5px;
   font-weight: 700;
   color: #0f766e;
-  margin-bottom: 6px;
+  margin: 7px 0 4px;
 }
-#ffab-drawer .ffab-dr-review textarea {
+#ffab-drawer .ffab-dr-issue-fields .ffab-rv-head:first-of-type { margin-top: 7px; }
+#ffab-drawer .ffab-dr-issue-fields #ffab-issue-title {
   width: 100%;
-  min-height: 64px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 9px;
+  border: 1px solid #e3e6ec;
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: #1a2233;
+}
+#ffab-drawer .ffab-dr-issue-fields #ffab-issue-title:focus {
+  outline: 2px solid #eef0fe;
+  border-color: #0f766e;
+}
+#ffab-drawer .ffab-dr-issue-fields textarea {
+  width: 100%;
+  min-height: 48px;
   font: inherit;
   font-size: 12.5px;
   padding: 8px;
@@ -693,7 +753,7 @@ body.ffab-stepping #ffab-highlight {
   box-sizing: border-box;
   color: #1a2233;
 }
-#ffab-drawer .ffab-dr-review textarea:focus {
+#ffab-drawer .ffab-dr-issue-fields textarea:focus {
   outline: 2px solid #eef0fe;
   border-color: #0f766e;
 }
