@@ -592,6 +592,66 @@ const HARNESS_JS = `
       JSON.stringify(rec().issues));
     check("the stored record carries no legacy review key", !("review" in rec()));
 
+    // 16. issues: a second issue scopes remarks, steps, and markers
+    click($("ffab-issue-new"));
+    await sleep(30);
+    check("New creates and activates a second issue",
+      rec().issues.length === 2 && rec().activeIssueId === rec().issues[1].id,
+      JSON.stringify(rec().issues));
+    check("the switcher names the new issue",
+      $("ffab-issue-cur").textContent.indexOf("Issue 2") !== -1, $("ffab-issue-cur").textContent);
+    check("the fresh issue has blank fields",
+      $("ffab-issue-title").value === "" && $("ffab-issue-observation").value === "");
+    click($("ffab-dr-pick"));
+    click($("save"));
+    await sleep(30);
+    $("ffab-ap-note").value = "issue two remark";
+    click($("ffab-ap-save"));
+    await sleep(30);
+    check("a remark lands on the active issue",
+      rec().annotations.length === 2 && rec().annotations[1].issueId === rec().activeIssueId);
+    check("the drawer lists only the active issue's remarks",
+      $("ffab-dr-list").querySelectorAll(".ffab-ann").length === 1
+        && $("ffab-dr-list").textContent.indexOf("issue two remark") !== -1);
+    check("markers show only the active issue's remarks",
+      document.querySelectorAll("#ffab-markers .ffab-marker:not(.ffab-marker-del)").length === 1);
+    click($("ffab-dr-step"));
+    click($("email"));
+    await sleep(30);
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    await sleep(30);
+    check("steps attach to the active issue",
+      rec().steps.length === 2 && rec().steps[1].issueId === rec().activeIssueId);
+    check("the steps section shows only the active issue's steps",
+      $("ffab-dr-steps").querySelectorAll(".ffab-bk-row").length === 1
+        && $("ffab-dr-steps").textContent.indexOf("#email") !== -1);
+    click($("ffab-issue-switch"));
+    await sleep(30);
+    check("the switcher opens the issue menu",
+      !$("ffab-issue-menu").classList.contains("ffab-hidden")
+        && $("ffab-issue-menu").querySelectorAll(".ffab-issue-row").length === 2);
+    click($("ffab-issue-menu").querySelectorAll(".ffab-issue-row")[0]);
+    await sleep(30);
+    check("switching activates the chosen issue", rec().activeIssueId === rec().issues[0].id);
+    check("the menu closes after switching", $("ffab-issue-menu").classList.contains("ffab-hidden"));
+    check("fields restore the chosen issue",
+      $("ffab-issue-title").value === "Save stays disabled"
+        && $("ffab-issue-observation").value === "Save stayed greyed out");
+    check("issue 1 shows its own remarks and steps",
+      $("ffab-dr-list").textContent.indexOf("loaded from paste") !== -1
+        && $("ffab-dr-list").textContent.indexOf("issue two remark") === -1
+        && $("ffab-dr-steps").querySelectorAll(".ffab-bk-row").length === 1
+        && $("ffab-dr-steps").textContent.indexOf("#save") !== -1);
+    check("markers follow the active issue",
+      document.querySelectorAll("#ffab-markers .ffab-marker:not(.ffab-marker-del)").length === 1);
+    $("ffab-issue-expected").value = "Save enables after a valid email";
+    $("ffab-issue-expected").dispatchEvent(new Event("input", { bubbles: true }));
+    click($("ffab-dr-pick"));
+    await sleep(30);
+    check("typing survives render", $("ffab-issue-expected").value === "Save enables after a valid email");
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    await sleep(30);
+
     const out = document.createElement("pre");
     out.id = "result";
     out.textContent = "RESULTS\\n" + log.join("\\n") + "\\nEXPORT_START\\n" + md + "\\nEXPORT_END";

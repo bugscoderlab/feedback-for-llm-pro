@@ -197,6 +197,14 @@
     return issues.find((i) => i.id === activeIssueId) ?? issues[0] ?? null;
   }
 
+  /** Remarks and steps of the active issue — the drawer and markers scope to these. */
+  function annActive() {
+    return annotations.filter((a) => a.issueId === activeIssueId);
+  }
+  function stepsActive() {
+    return steps.filter((s) => s.issueId === activeIssueId);
+  }
+
   /** A fresh page (or a wiped one) starts with one empty default issue. */
   function ensureIssue() {
     if (!issues.length) {
@@ -574,6 +582,10 @@
       return;
     }
     if (e.key === "Escape") {
+      if (!$("ffab-issue-menu").classList.contains("ffab-hidden")) {
+        hide($("ffab-issue-menu"));
+        return;
+      }
       if (!$("ffab-dr-fmt").classList.contains("ffab-hidden")) {
         closeFmt();
         return;
@@ -644,7 +656,7 @@
   }
 
   async function addStepEntry(target) {
-    steps.push({ ...target, at: new Date().toISOString() });
+    steps.push({ ...target, issueId: activeIssueId, at: new Date().toISOString() });
     await save();
     render();
   }
@@ -962,7 +974,7 @@
     // exactly as for individually picked remarks.
     const targets = pendingTargets.length ? pendingTargets : [pendingTarget];
     for (const t of targets) {
-      annotations.push({ num: seq++, status: "open", note, ...t, at: new Date().toISOString() });
+      annotations.push({ num: seq++, status: "open", note, issueId: activeIssueId, ...t, at: new Date().toISOString() });
     }
     await save();
     closePopover();
@@ -974,7 +986,7 @@
   function renderMarkers() {
     const box = $("ffab-markers");
     box.innerHTML = "";
-    annotations.forEach((a) => {
+    annActive().forEach((a) => {
       let el = null;
       try {
         el = document.querySelector(a.selector);
@@ -1082,6 +1094,8 @@
     const removing = pickMode === "remove";
     const stepping = pickMode === "step";
     const multi = pickMode === "multi";
+    // The pill and the toolbar badge count the page's open remarks across all
+    // its issues; the drawer itself scopes its list to the active one.
     const open = annotations.filter((a) => a.status === "open").length;
     // While removal-/step-/multi-picking, the FAB becomes that run's live
     // counter — the drawer is hidden at that point, so it is the only running
@@ -1108,8 +1122,9 @@
     }
 
     const list = $("ffab-dr-list");
-    list.innerHTML = annotations.length
-      ? annotations
+    const act = annActive();
+    list.innerHTML = act.length
+      ? act
           .map((a, i) => {
             const cl = compLine(a);
             return `
@@ -1131,14 +1146,13 @@
       </div>`;
           })
           .join("")
-      : `<div class="ffab-dr-empty">No remarks yet.<br>Click <b>🎯 Pick element</b>, then click anything — a field, a column, a button — and write what you want changed.<br><br>To explain the run that got you here, use <b>🧭 Record steps</b> — click element after element, then Esc and write your review.<br><br>To delete elements instead, use <b>🚫 Remove element</b> — picks drop straight into the removal basket.<br><br>To say the same thing about a whole group, use <b>🎯 Pick several</b> — click each element, press Esc, and write the note once; it lands on each as its own remark.<br><br>Or paste a CSS selector from Firefox Inspect below.</div>`;
+      : `<div class="ffab-dr-empty">No remarks in this issue yet.<br>Click <b>🎯 Pick element</b>, then click anything — a field, a column, a button — and write what you want changed.<br><br>To explain the run that got you here, use <b>🧭 Record steps</b> — click element after element, then Esc and write your observation.<br><br>To delete elements instead, use <b>🚫 Remove element</b> — picks drop straight into the removal basket.<br><br>To say the same thing about a whole group, use <b>🎯 Pick several</b> — click each element, press Esc, and write the note once; it lands on each as its own remark.<br><br>Or paste a CSS selector from Firefox Inspect below.</div>`;
 
     list.querySelectorAll("button").forEach((b) =>
       b.addEventListener("click", async () => {
-        const a = annotations[+b.dataset.i];
-        if (b.dataset.act === "del") annotations.splice(+b.dataset.i, 1);
-        if (b.dataset.act === "resolve")
-          a.status = a.status === "resolved" ? "open" : "resolved";
+        const a = act[+b.dataset.i];
+        if (b.dataset.act === "del") annotations.splice(annotations.indexOf(a), 1);
+        if (b.dataset.act === "resolve") a.status = a.status === "resolved" ? "open" : "resolved";
         if (b.dataset.act === "locate") {
           locate(a.selector, b);
           return; // nothing changed — no save, no re-render
@@ -1175,6 +1189,38 @@
     syncField("ffab-issue-title", issue.title);
     syncField("ffab-issue-expected", issue.expected);
     syncField("ffab-issue-observation", issue.observation);
+    const menu = $("ffab-issue-menu");
+    menu.innerHTML = issues
+      .map(
+        (i, idx) => `
+      <button class="ffab-issue-row${i.id === activeIssueId ? " ffab-on" : ""}" data-id="${i.id}">
+        <span class="ffab-issue-n">Issue ${idx + 1}</span>
+        <span class="ffab-issue-t">${escapeHtml(i.title.trim() || "(untitled)")}</span>
+      </button>`
+      )
+      .join("");
+    menu.querySelectorAll(".ffab-issue-row").forEach((r) =>
+      r.addEventListener("click", () => switchIssue(+r.dataset.id))
+    );
+  }
+
+  /** Activate another issue: its remarks, steps, and fields take over the
+     drawer and the page markers. A popover left open belongs to the previous
+     issue's context, so it closes rather than leaking a pending pick. */
+  async function switchIssue(id) {
+    if (!issues.some((i) => i.id === id)) return;
+    activeIssueId = id;
+    hide($("ffab-issue-menu"));
+    closePopover();
+    render();
+    // A switch is a context change: the fields snap to the new issue even if
+    // one of them kept focus — the per-render guard deliberately skips the
+    // focused element so typing survives renders, which is wrong here.
+    const issue = activeIssue();
+    $("ffab-issue-title").value = issue.title;
+    $("ffab-issue-expected").value = issue.expected;
+    $("ffab-issue-observation").value = issue.observation;
+    await save(); // the active issue survives a reload
   }
 
   /**
@@ -1184,7 +1230,8 @@
    */
   function renderSteps() {
     const box = $("ffab-dr-steps");
-    const has = !!steps.length;
+    const act = stepsActive();
+    const has = !!act.length;
     box.classList.toggle("ffab-hidden", !has);
 
     if (!has) {
@@ -1193,10 +1240,10 @@
     }
     box.innerHTML =
       `<div class="ffab-st-head">
-         <span class="ffab-st-title">🧭 Steps to reproduce (${steps.length})</span>
+         <span class="ffab-st-title">🧭 Steps to reproduce (${act.length})</span>
          <button class="ffab-st-clear" data-act="steps-clear">clear</button>
        </div>` +
-      steps
+      act
         .map(
           (s, i) => `
       <div class="ffab-bk-row">
@@ -1213,10 +1260,13 @@
 
     box.querySelectorAll("button").forEach((b) =>
       b.addEventListener("click", async () => {
-        if (b.dataset.act === "steps-clear") steps = [];
-        else if (b.dataset.act === "step-del") steps.splice(+b.dataset.i, 1);
-        else if (b.dataset.act === "step-locate") {
-          locate(steps[+b.dataset.i]?.selector, b);
+        if (b.dataset.act === "steps-clear")
+          steps = steps.filter((s) => s.issueId !== activeIssueId);
+        else if (b.dataset.act === "step-del") {
+          const target = act[+b.dataset.i];
+          steps.splice(steps.indexOf(target), 1);
+        } else if (b.dataset.act === "step-locate") {
+          locate(act[+b.dataset.i]?.selector, b);
           return; // showing beats telling — nothing to save
         }
         await save();
@@ -1280,6 +1330,21 @@
     setDrawerOpen(!isDrawerOpen());
   });
   $("ffab-dr-close").addEventListener("click", () => setDrawerOpen(false));
+  $("ffab-issue-switch").addEventListener("click", () =>
+    $("ffab-issue-menu").classList.toggle("ffab-hidden")
+  );
+  $("ffab-issue-new").addEventListener("click", () => {
+    const issue = {
+      id: issueSeq++,
+      title: "",
+      expected: "",
+      observation: "",
+      createdAt: new Date().toISOString(),
+    };
+    issues.push(issue);
+    switchIssue(issue.id);
+    setTimeout(() => $("ffab-issue-title").focus(), 50);
+  });
   $("ffab-dr-pick").addEventListener("click", () =>
     pickMode === "remark" ? stopPicking() : startPicking("remark")
   );
