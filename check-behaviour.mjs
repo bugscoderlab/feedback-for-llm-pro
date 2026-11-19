@@ -411,9 +411,9 @@ const HARNESS_JS = `
     check("steps are numbered in order",
       where.every((p, i) => p !== -1 && (i === 0 || p > where[i - 1])),
       WANT_STEPS.filter((l, i) => where[i] === -1).join(" / ") || "in order");
-    check("steps come before the observation", md.indexOf("## Steps to reproduce") < md.indexOf("Observation:"));
-    check("observation follows the steps", md.indexOf("Observation:") < md.indexOf(REVIEW) && md.indexOf(REVIEW) !== -1);
-    check("remarks still follow the review", md.indexOf(REVIEW) < md.indexOf("## 1. [OPEN] button"));
+    check("steps come before the actual", md.indexOf("## Steps to reproduce") < md.indexOf("## Actual"));
+    check("the actual follows the steps", md.indexOf("## Actual") < md.indexOf(REVIEW) && md.indexOf(REVIEW) !== -1);
+    check("remarks still follow the observation", md.indexOf(REVIEW) < md.indexOf("### 1. [OPEN] button"));
     check("the brief names the component and source file",
       md.indexOf("Component: \\\`PricingCard\\\`") !== -1 &&
         md.indexOf("src/components/PricingCard.tsx:42") !== -1);
@@ -556,8 +556,11 @@ const HARNESS_JS = `
     await sleep(80);
     check("load replaces the record",
       rec().annotations.length === 1 && rec().annotations[0].note === "loaded from paste");
-    check("load restores steps, review, and seq",
-      rec().steps.length === 1 && rec().review === "loaded review" && rec().seq === 2);
+    check("load restores steps and seq", rec().steps.length === 1 && rec().seq === 2);
+    check("a format 1 load migrates the review into one issue",
+      rec().issues.length === 1 && rec().issues[0].observation === "loaded review"
+        && rec().annotations[0].issueId === rec().activeIssueId,
+      JSON.stringify(rec().issues));
     check("the loaded review lands in observation", $("ffab-issue-observation").value === "loaded review");
     check("load closes the box and reports on its own button",
       $("ffab-dr-loadbox").classList.contains("ffab-hidden")
@@ -651,6 +654,65 @@ const HARNESS_JS = `
     check("typing survives render", $("ffab-issue-expected").value === "Save enables after a valid email");
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     await sleep(30);
+
+    // 17. the per-issue export: GitHub-issue-shaped markdown of the active issue
+    click($("ffab-fab"));
+    await sleep(30);
+    check("the drawer is open for the export", !$("ffab-drawer").classList.contains("ffab-hidden"));
+    click($("ffab-dr-del"));
+    click($("email"));
+    await sleep(30);
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    await sleep(30);
+    check("a basket entry exists for the page-wide section", rec().basket.length === 1);
+    click($("ffab-dr-copy"));
+    await sleep(60);
+    const issueMd = window.__export || "";
+    check("export exists", !!issueMd);
+    check("the export starts with the issue title", issueMd.indexOf("Save stays disabled") === 0,
+      issueMd.slice(0, 40));
+    check("the export carries the page", issueMd.indexOf("*Page:") !== -1);
+    check("steps head the issue export", issueMd.indexOf("## Steps to reproduce") !== -1);
+    check("expected and actual sections exist",
+      issueMd.indexOf("## Expected") !== -1 && issueMd.indexOf("## Actual") !== -1);
+    check("the observation lands under Actual",
+      issueMd.indexOf("## Actual") < issueMd.indexOf("Save stayed greyed out"));
+    check("remarks carry selectors and status",
+      issueMd.indexOf("\\\`#email\\\`") !== -1 && issueMd.indexOf("[OPEN]") !== -1);
+    check("the page-wide basket rides along",
+      issueMd.indexOf("## Remove these elements (page-wide)") !== -1);
+
+    // 17b. format 2 JSON round-trips the whole record
+    const rec2 = Object.assign(
+      { app: "feedback-for-llm", format: 2, exported: new Date().toISOString(), pageKey: "test" },
+      rec());
+    const rec2json = JSON.stringify(rec2);
+    click($("ffab-dr-clear"));
+    await sleep(30);
+    click($("ffab-dr-ask-yes"));
+    await sleep(50);
+    check("clear all wipes before the round trip", rec().annotations.length === 0 && rec().issues.length === 1);
+    click($("ffab-dr-load"));
+    await sleep(30);
+    $("ffab-dr-loadtext").value = rec2json;
+    click($("ffab-dr-load-go"));
+    await sleep(80);
+    check("format 2 load restores issues and the active one",
+      rec().issues.length === 2 && rec().activeIssueId === rec2.activeIssueId,
+      JSON.stringify(rec().issues));
+    check("format 2 load restores remarks and steps with their issues",
+      rec().annotations.length === 2 && rec().steps.length === 2
+        && rec().annotations.every((a) => typeof a.issueId === "number"));
+
+    // 17c. a format 1 record with no review key migrates to an empty Observation
+    const bare = { app: "feedback-for-llm", format: 1, annotations: [], seq: 1, basket: [], steps: [] };
+    click($("ffab-dr-load"));
+    await sleep(30);
+    $("ffab-dr-loadtext").value = JSON.stringify(bare);
+    click($("ffab-dr-load-go"));
+    await sleep(80);
+    check("missing review migrates to an empty observation",
+      rec().issues.length === 1 && rec().issues[0].observation === "");
 
     const out = document.createElement("pre");
     out.id = "result";

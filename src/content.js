@@ -1448,40 +1448,49 @@
     return !$("ffab-fab").classList.contains("ffab-hidden");
   }
 
-  /* ---------------- brief export ---------------- */
+  /* ---------------- issue export ---------------- */
 
-  function feedbackText() {
-    const open = annotations.filter((a) => a.status === "open");
+  // The active issue as a GitHub-issue-shaped markdown body: title first,
+  // then the journey, the expected-vs-actual pair, the remarks with their
+  // selectors/components, and finally the page-global removal basket —
+  // deleting elements is page feedback, not part of one issue's story, but
+  // the consumer fixing the page needs the whole list.
+  function issueText(issue) {
+    const anns = annotations.filter((a) => a.issueId === issue.id);
+    const stps = steps.filter((s) => s.issueId === issue.id);
+    const open = anns.filter((a) => a.status === "open").length;
+    const title = issue.title.trim() || "Untitled issue";
     const L = [
-      `# UI feedback — ${document.title || location.host}`,
-      `Page: ${pageKey}`,
-      `Exported: ${new Date().toLocaleString()} · ${open.length} open remark(s), ${annotations.length} total` +
-        (steps.length ? ` · ${steps.length} step(s) to reproduce` : "") +
-        (basket.length ? ` · ${basket.length} element(s) to remove` : ""),
+      title,
+      `*Page: ${pageKey} · Exported: ${new Date().toLocaleString()} · ${open} open remark(s), ${anns.length} total` +
+        (stps.length ? ` · ${stps.length} step(s) to reproduce` : "") +
+        (basket.length ? ` · ${basket.length} element(s) to remove` : "") +
+        "*",
       "",
     ];
     // The run that got the reviewer here comes first, so the agent reads the
     // journey before the individual requests.
-    if (steps.length) {
+    if (stps.length) {
       L.push(`## Steps to reproduce`, "");
-      steps.forEach((s, i) =>
+      stps.forEach((s, i) =>
         L.push(`${i + 1}. ${s.label} — \`${s.selector}\`${s.component ? ` — ⚛ \`${s.component}\`${s.source ? ` (${s.source})` : ""}` : ""}`));
       L.push("");
-      const obs = activeIssue()?.observation?.trim();
-      if (obs) L.push("Observation:", obs, "");
     }
-    if (!annotations.length) L.push("(no remarks)");
-    annotations.forEach((a) => {
-      L.push(`## ${a.num}. [${a.status.toUpperCase()}] ${a.label}`);
-      L.push(`- Where: ${a.docCtx}`);
-      L.push(`- Selector: \`${a.selector}\``);
-      if (a.component) L.push(`- Component: \`${a.component}\`${a.source ? ` — ${a.source}` : ""}`);
-      else if (a.source) L.push(`- Source: \`${a.source}\``);
-      if (a.content) L.push(`- Currently shows: "${a.content}"`);
-      L.push("", "Requested change:", a.note, "");
-    });
+    L.push("## Expected", "", issue.expected.trim() || "(not written)", "");
+    L.push("## Actual", "", issue.observation.trim() || "(not written)", "");
+    if (anns.length) {
+      L.push("## Remarks", "");
+      anns.forEach((a) => {
+        L.push(`### ${a.num}. [${a.status.toUpperCase()}] ${a.label}`);
+        L.push(`- Selector: \`${a.selector}\``);
+        if (a.component) L.push(`- Component: \`${a.component}\`${a.source ? ` — ${a.source}` : ""}`);
+        else if (a.source) L.push(`- Source: \`${a.source}\``);
+        if (a.content) L.push(`- Currently shows: "${a.content}"`);
+        L.push("", "Requested change:", a.note, "");
+      });
+    }
     if (basket.length) {
-      L.push(`## Remove these elements`, "");
+      L.push(`## Remove these elements (page-wide)`, "");
       basket.forEach((b) => {
         L.push(`- \`${b.selector}\`${b.label ? ` — ${b.label}` : ""}`);
       });
@@ -1495,7 +1504,7 @@
   }
 
   function copyFeedback() {
-    const t = feedbackText();
+    const t = issueText(activeIssue());
     // No dialog: the button that was clicked reports the result itself, so the
     // page never gets a modal to dismiss and the reviewer keeps clicking.
     const report = (ok) => flashButton($("ffab-dr-copy"), ok ? "✓ Copied" : "⚠ Copy failed", ok);
@@ -1529,7 +1538,7 @@
   }
 
   function downloadFeedback() {
-    const blob = new Blob([feedbackText()], { type: "text/markdown" });
+    const blob = new Blob([issueText(activeIssue())], { type: "text/markdown" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `feedback-${location.hostname}-${new Date().toISOString().slice(0, 10)}.md`;
@@ -1616,16 +1625,21 @@
 
   $("ffab-dr-fmt-json").addEventListener("click", () => {
     closeFmt();
+    // format 2: the whole page record — every issue, the page-global basket,
+    // everything needed to restore this state via Load. The app marker stays
+    // "feedback-for-llm": it identifies the format, not the flavour.
     const rec = {
       app: "feedback-for-llm",
-      format: 1,
+      format: 2,
       exported: new Date().toISOString(),
       pageKey,
       annotations,
       seq,
       basket,
       steps,
-      review,
+      issues,
+      issueSeq,
+      activeIssueId,
     };
     const blob = new Blob([JSON.stringify(rec, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
