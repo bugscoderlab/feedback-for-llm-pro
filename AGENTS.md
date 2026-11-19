@@ -55,6 +55,29 @@ the React fiber walk runs via the injected page-world probe
 (`window.__ffabReactInfo`, called through `window.wrappedJSObject`). Keep that
 bridge intact when touching `reactInfo`/`describeElement`.
 
+## Keeping in sync with upstream
+
+The `upstream` remote points at
+[`bugscoderlab/feedback-for-llm`](https://github.com/bugscoderlab/feedback-for-llm)
+(added 2026-11-19; this repo is **not** a GitHub network fork). Pro = upstream
+engine + a layer of pro-only changes (branding, structured-issue feature) on
+top of the `76e8f6d` baseline import.
+
+- **Never fetch upstream tags** (`remote.upstream.tagOpt = --no-tags` is set):
+  upstream's `v*` tag names collide with this repo's own release tags. Fetch
+  branches only.
+- **To port upstream work**: `git fetch upstream`, then either
+  `git merge upstream/main` (brings everything, one merge commit) or
+  `git cherry-pick <sha>` specific commits (e.g. the 1.9.x run `1d8ba41`,
+  `ea8cfe3`, `8fc73bf`). Resolve conflicts in favour of "keep pro branding and
+  features, adopt upstream's engine changes".
+- Keep pro-only changes in small, well-separated commits so these merges stay
+  clean. Known overlap/conflict zones: drawer markup, `onPickClick`, the
+  popover save path.
+- Upstream tags are the porting reference: a version like upstream v1.9.2 =
+  tag `v1.9.2` there; `git log upstream/main` after fetching shows the same
+  commits.
+
 ## Next: the structured-issue feature (the reason this repo exists)
 
 Design already agreed with the user — build to this spec:
