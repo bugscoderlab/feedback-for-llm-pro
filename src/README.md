@@ -35,8 +35,9 @@ CSS selectors and React component names. Forked from
   problem, which the popover's one-shot remarks can't express. The picker works the
   same way (teal highlight, picks skip the popover), each click appends the next step,
   and it stays armed so the whole run is one motion; the pill counts the steps as you
-  go. **Esc ends the run and opens the drawer to write your Review** — because the
-  point of stopping is having something to write down. Steps and review are positional
+  go. **Esc ends the run and opens the drawer to write your Expected and
+  Observation** — because the point of stopping is having something to write
+  down. Steps and words are positional
   and persisted per page, so you can stop mid-run, reload, and pick it back up.
 - **💾 Save remark** — numbered markers pin to the elements; **clicking a
   marker reopens its popover with the note prefilled**, so the comment can be
@@ -47,13 +48,19 @@ CSS selectors and React component names. Forked from
   Footer accepts a raw CSS selector pasted from Firefox Inspect. **🗑 Clear all**
   appears only when there is something to clear, and swaps to an explicit
   ✓/✕ pair on the spot rather than using a dialog.
-- **📋 Copy / ⬇ feedback.md** — exports exactly the prototype's format, with the
-  walkthrough in front of it:
+- **🐞 Issues** — the page's feedback is organised as issues: one **active
+  issue** at a time, each with a **title**, **Expected**, **Observation**
+  (the walkthrough's story), its own steps and remarks, and page markers. The
+  issue bar (`Issue 1 ▾` + **＋ New**) in the drawer switches between issues
+  and starts new ones; switching re-scopes the drawer list, the steps, and
+  the on-page markers. The removal basket stays **page-global** — deleting an
+  element is page feedback, not part of one issue's story.
+- **📋 Copy / ⬇ feedback.md** — exports the **active issue** shaped as a
+  GitHub issue body:
 
   ```markdown
-  # UI feedback — <page title>
-  Page: <origin + path>
-  Exported: … · 2 open remark(s), 3 total · 3 step(s) to reproduce
+  Save button stays disabled after filling the email
+  *Page: <origin + path> · Exported: … · 2 open remark(s), 3 total · 3 step(s) to reproduce*
 
   ## Steps to reproduce
 
@@ -61,21 +68,29 @@ CSS selectors and React component names. Forked from
   2. input "Email" — `.modal form > input:nth-of-type(2)`
   3. button "Save" — `.modal footer > button`
 
-  Review:
-  <what you did, what you expected, what happened>
+  ## Expected
 
-  ## 1. [OPEN] button "Approve all pending"
-  - Where: … · localhost:3000/
+  Save becomes clickable once Email is valid
+
+  ## Actual
+
+  Save stayed greyed out
+
+  ### 1. [OPEN] button "Approve all pending"
   - Selector: `.q-item:nth-of-type(4) > button`
   - Currently shows: "approve"
   Requested change:
   make it a primary button
   ```
 
-  Steps first, so the agent follows the journey before the requests; then act on OPEN
-  remarks (RESOLVED ones are done). When elements were basketed, a
-  `## Remove these elements` block of selectors follows the remarks. Copy says so on
-  its own button (`✓ Copied`) — no dialog to dismiss.
+  Steps first, so the agent follows the journey before the requests; then the
+  expected-vs-actual pair, then act on OPEN remarks (RESOLVED ones are done).
+  When elements were basketed, a page-wide `## Remove these elements`
+  section follows the remarks. The **⬇ json** export saves the whole page
+  record (`format: 2` — every issue plus the basket) and **📂 Load** accepts
+  both it and old `format: 1` records, migrating the legacy freeform review
+  into the first issue's Observation. Copy says so on its own button
+  (`✓ Copied`) — no dialog to dismiss.
 - **Toolbar button** drops the on-page **📝 Feedback *n* pill** and shows an
   open-remark badge count. The drawer opens only from the pill; clicking the toolbar
   button again takes the pill (and drawer) away, so a page stays clean until asked.
@@ -100,7 +115,7 @@ npx web-ext run            # launches Firefox with the extension, auto-reloads o
    the bottom-right corner. Click the pill to open the drawer.
 2. **🎯 Pick element**, click the element, write the change, **💾 Save remark**.
 3. To explain how you got there instead, **🧭 Record steps** and click the elements in
-   order — then Esc and write your **Review**. Steps and review persist per page, so you
+   order — then Esc and write your **Observation**. Steps and issue fields persist per page, so you
    can stop mid-run and pick it back up later.
 4. To delete elements, use **🚫 Remove element** and click each one
    (no note needed), then Esc — they collect in the removal basket above the remarks.

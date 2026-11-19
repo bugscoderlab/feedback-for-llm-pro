@@ -18,7 +18,7 @@ v1.8.2 — same engine, new identity.
   the release workflow would fail without the one-time setup below.
 - `gh-pages` branch exists (empty placeholder `bc815c5`) so Pages can be
   pointed at it.
-- All 88 behaviour assertions pass; `node build.mjs` is clean.
+- All 138 behaviour assertions pass; `node build.mjs` is clean.
 
 ## One-time setup — USER'S SIDE, status unknown — verify before tagging
 
@@ -81,22 +81,33 @@ top of the `76e8f6d` baseline import.
   tag `v1.9.2` there; `git log upstream/main` after fetching shows the same
   commits.
 
-## Next: the structured-issue feature (the reason this repo exists)
+## The structured-issue feature (implemented 2026-11-19)
 
-Design already agreed with the user — build to this spec:
+Built to the agreed spec (this section previously held the design; the design
+ships as implemented):
 
-- **Issue = container**: title + **Expected** + **Observation** (the current
-  freeform "Review" box becomes Observation; Expected is new) + steps (exists
-  as 🧭 Record steps) + remarks (exist as 🎯 picks). One **active issue** at a
-  time: a switcher (`[ Issue: "…" ▾ ]` + ＋ New) in the drawer header.
-- **Per-issue**: steps, remarks, markers. **Page-global**: the removal basket
-  ("remove this element" is page feedback, not part of one issue's story).
-- **Persistence**: stays keyed by `pageKey`; add `issues: []`. JSON export
-  becomes `format: 2`, and `Load` must still accept `format: 1` records (the
-  `app: "feedback-for-llm"` marker stays — it is a format identifier).
-- **Export**: markdown shaped as a GitHub issue body — title, `## Steps to
-  reproduce`, `## Expected`, `## Actual` (observation), remarks with
-  selectors/components. Copy/Save per issue or per page (pick one, state it).
+- **Issue = container**: title + **Expected** + **Observation** (the old
+  freeform Review box became Observation) + steps + remarks. One **active
+  issue** at a time: the switcher (`Issue 1 ▾`) + **＋ New** in the drawer.
+- **Per-issue**: steps, remarks, markers (drawer list, steps section, and
+  on-page markers all scope to the active issue). **Page-global**: the removal
+  basket (no `issueId` on basket entries).
+- **Persistence**: same `pageKey` storage; the record is now shape v2 —
+  `{annotations, seq, basket, steps, issues, issueSeq, activeIssueId}` (no
+  `review` key). Legacy storage records and `format: 1` JSON migrate on load:
+  one default issue absorbs `review` as its Observation, and unstamped picks
+  get the active issue's id (stamped, never dropped).
+- **Export**: Copy / .md Save = the **active issue** as a GitHub issue body
+  (title, `*Page: …*` meta, `## Steps to reproduce`, `## Expected`,
+  `## Actual`, `## Remarks`, then the page-global `## Remove these elements
+  (page-wide)` when the basket is non-empty). **json Save = whole page record
+  as `format: 2`**; `Load` accepts both formats. The
+  `app: "feedback-for-llm"` marker stays — it identifies the format.
+- **Semantics decisions**: the pill count and toolbar badge count open
+  remarks across ALL issues (page-level signal); only the drawer scopes to
+  the active issue. `switchIssue` force-syncs the fields and persists — the
+  per-render "don't clobber the focused element" guard would otherwise show
+  the previous issue's text in a focused field after a switch.
 - **Deferred (phase 2)**: direct GitHub issue creation via API — token must
   live in the background script, never a content script.
 

@@ -39,11 +39,17 @@ in sync with upstream"; `upstream` remote added, tags disabled).
 1. User adds AMO secrets → tag `v1.0.0` → watch `gh run watch` → confirm the
    signed release lands.
 2. ~~Port the 1.9.x work~~ — done, see above.
-3. Then the structured-issue feature (spec in `AGENTS.md` → "Next"): issue =
-   container with title + Expected + Observation (current Review box) +
-   steps + remarks; one active issue; per-issue steps/remarks/markers;
-   page-global basket; `format: 2` export with `format: 1` Load compat;
-   GitHub-issue-shaped markdown.
+3. ~~Then the structured-issue feature~~ — **done 2026-11-19** (three commits
+   after the merge: model+fields, switcher+scoping, export+format 2). Issues
+   with title/Expected/Observation + per-issue steps/remarks/markers, page-
+   global basket, `format: 2` JSON with `format: 1` Load compat, GitHub-issue
+   markdown. 138 behaviour assertions green. See AGENTS.md → "The
+   structured-issue feature" for the shipped semantics.
+
+## Next: phase 2 (deferred by spec)
+
+Direct GitHub issue creation via API — token lives in the background script,
+never a content script.
 
 ## Environment notes
 

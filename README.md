@@ -37,20 +37,29 @@ from this repo's GitHub Releases.
   you press Esc.
 - **🧭 Record steps** — the run that led to the problem: click element after element
   and each pick appends the next step, in order, the picker staying armed so the whole
-  walkthrough is one motion. Esc ends it and opens the drawer to write your **Review**.
-  Stop mid-run and resume whenever — steps and review persist per page.
+  walkthrough is one motion. Esc ends it and opens the drawer to write your
+  **Expected** and **Observation**.
+  Stop mid-run and resume whenever — steps and words persist per page.
+- **🐞 Issues** — one page, several problems: feedback is organised as issues,
+  one **active** at a time, each with a title, Expected, Observation, its own
+  steps/remarks/markers. The issue bar (`Issue 1 ▾` + **＋ New**) switches and
+  creates; the removal basket stays page-global. Copy/Save export the active
+  issue shaped as a **GitHub issue body** (`## Steps to reproduce`,
+  `## Expected`, `## Actual`, remarks with selectors and React components);
+  **json** saves the whole record as `format: 2` and **Load** still accepts
+  `format: 1`.
 - **💾 Save remarks** — numbered markers pin to elements (click one to reopen
   and edit its comment), persist per page in `browser.storage.local` (survive
   reloads and restarts).
 - **Drawer** — locate / resolve / reopen / delete remarks, unmark basketed elements,
   locate or drop individual steps, and accept a raw CSS selector from Firefox Inspect.
-- **📋 Copy / ⬇ Save / 📂 Load** — Copy puts the markdown brief on the
-  clipboard. **Save** swaps in place for a choice: **📝 md** (the brief) or
-  **🧾 json** (the full record — remarks, steps, review, basket). **Load**
-  opens a paste box, so a review can travel through chat or email and be
-  pasted straight back with no file picker; loading over existing content says
-  so in the box before you confirm. Outcomes confirm on the button itself
-  rather than in a dialog.
+- **📋 Copy / ⬇ Save / 📂 Load** — Copy puts the active issue's GitHub-shaped
+  markdown on the clipboard. **Save** swaps in place for a choice: **📝 md**
+  (the issue) or **🧾 json** (the full record — remarks, steps, every issue,
+  basket). **Load** opens a paste box, so a record can travel through chat or
+  email and be pasted straight back with no file picker; loading over existing
+  content says so in the box before you confirm. Outcomes confirm on the button
+  itself rather than in a dialog.
 - **Toolbar button** drops the on-page **📝 Feedback *n* pill** (and shows an
   open-remark badge count); the drawer opens only from that pill, and the toolbar
   button puts the pill — and everything with it — away again.
