@@ -19,30 +19,26 @@ mechanics see `AGENTS.md`; this file is the "where are we" snapshot.*
 - Verify: `node check-behaviour.mjs` (88 assertions), `check-hidden.mjs`,
   `check-toggle.mjs`, `node build.mjs`.
 
-## Upstream (../feedback-for-llm) — has moved on since the fork
+## Upstream (../feedback-for-llm) — 1.9.x PORTED 2026-11-19
 
-Shipped after the 1.8.2 baseline, none of it ported here yet:
+Merged `upstream/main` (`8fc73bf`, v1.9.2) into pro main as `1348bb8` — the
+one-time `--allow-unrelated-histories` merge that establishes a merge base, so
+future upstream syncs are ordinary three-way merges (see AGENTS.md → "Keeping
+in sync with upstream"; `upstream` remote added, tags disabled).
 
-- **v1.9.0 — "Pick several"**: multi-pick mode; one note fanned out onto N
-  picked elements as individual numbered remarks. New drawer button
-  `ffab-dr-multi`, `pickMode: "multi"`, `pendingTargets` run, popover fans out,
-  pill counts the run, Esc opens the popover once. Subframe relay handles
-  `multi`.
-- **v1.9.1 — picked-so-far panel**: live list of the collected run.
-- **v1.9.2 — occlusion fix (important)**: the grown panel swallowed clicks on
-  page content beneath it (reported on a dense P&L table — the cell next to a
-  picked one became unclickable). Fixed: panel is now a compact chip by
-  default (`ffab-run-chip`), click to expand, header click folds back. When
-  porting, take **1.9.2**, not 1.9.1.
+- ✅ v1.9.0 "Pick several" — multi-pick, one note fanned out onto N elements.
+- ✅ v1.9.1/v1.9.2 picked-so-far panel + occlusion fix — the chip variant.
+- Resolution rule applied: upstream engine changes adopted, pro identity
+  (name, version 1.0.0, URLs, addon id) kept. `git diff upstream/main` on
+  engine files shows branding only.
+- Verified after merge: 106 behaviour assertions (was 88), check-hidden,
+  check-toggle, build all green.
 
 ## First tasks when resuming
 
 1. User adds AMO secrets → tag `v1.0.0` → watch `gh run watch` → confirm the
    signed release lands.
-2. Port the 1.9.x work (cherry-pick `1d8ba41`, `ea8cfe3`, `8fc73bf` from the
-   original repo, or merge `main`) — expect conflicts in the drawer markup,
-   `onPickClick`, and the popover save path, all of which the issue-container
-   feature will also touch.
+2. ~~Port the 1.9.x work~~ — done, see above.
 3. Then the structured-issue feature (spec in `AGENTS.md` → "Next"): issue =
    container with title + Expected + Observation (current Review box) +
    steps + remarks; one active issue; per-issue steps/remarks/markers;

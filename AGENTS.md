@@ -11,6 +11,9 @@ v1.8.2 — same engine, new identity.
 
 - Baseline import committed as `76e8f6d` ("Import feedback-for-llm v1.8.2 as
   the pro baseline"), pushed to `main`. Working tree clean.
+- Engine synced to upstream **v1.9.2** on 2026-11-19 via one-time merge of
+  `upstream/main` (`1348bb8`) — multi-pick "Pick several", picked-so-far chip,
+  occlusion fix. Future upstream syncs are ordinary three-way merges.
 - Version **1.0.0** — committed to `src/manifest.json`, but **NOT tagged yet**:
   the release workflow would fail without the one-time setup below.
 - `gh-pages` branch exists (empty placeholder `bc815c5`) so Pages can be
